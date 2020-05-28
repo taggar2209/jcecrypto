@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:crypto="http://www.mulesoft.org/schema/mule/crypto" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/crypto http://www.mulesoft.org/schema/mule/crypto/current/mule-crypto.xsd http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+    <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="6a1d4faf-8a26-4748-8332-5216f9b9dd60">
+        <http:listener-connection host="localhost" port="8081" />
+    </http:listener-config>
+    <crypto:jce-config name="Crypto_Jce" doc:name="Crypto Jce" doc:id="2f5a799b-bb60-4515-b2c0-c210050e6b59" keystore="sample.jceks" password="password" type="JCEKS">
+        <crypto:jce-key-infos>
+            <crypto:jce-symmetric-key-info keyId="sample" alias="sample" password="password" />
+        </crypto:jce-key-infos>
+    </crypto:jce-config>
+    <vm:config name="VM_Config" doc:name="VM Config" doc:id="4ddf74ef-b002-47cd-9968-4d00b32d8186">
+        <vm:queues>
+            <vm:queue queueName="sample" />
+        </vm:queues>
+    </vm:config>
+	<flow name="JCECryptographyEncryptionFlow" doc:id="643c7feb-0e37-4efa-8b51-f0b34f8b997d">
+        <http:listener doc:name="Listener" doc:id="027793d6-6012-4ce8-871d-3779fda90590" config-ref="HTTP_Listener_config" path="/jcecryptography" />
+        <logger level="INFO" doc:name="Logger" doc:id="ac0d526c-4d06-4345-a9b0-a2577c04b254" message="Incoming payload : #[payload]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="187cc3d2-ea79-4cd4-847e-6c3a510631b4" message="***Encrypting Payload***"/>
+		<crypto:jce-encrypt doc:name="Jce encrypt" doc:id="6e9502dd-f16c-4895-abfc-3e4ff4af5b70" config-ref="Crypto_Jce" keyId="sample" algorithm="AES" >
+		</crypto:jce-encrypt>
+        <logger level="INFO" doc:name="Logger" doc:id="fac262ce-feb7-40e7-b6d8-74269162b902" message="+++Payload After Encryption : #[payload]" />
+		<vm:publish-consume queueName="sample" doc:name="Publish consume" doc:id="e148702a-9c58-4795-bb77-872096862bf7" config-ref="VM_Config"/>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="13ab8b5f-fade-4243-98c0-e5810a1e41e8" mimeType="application/json"/>
+    </flow>
+    <flow name="JCECryptographyDecryptionFlow" doc:id="3f8e2fcf-44c1-404f-8714-cf1dcaf6cb18">
+        <vm:listener doc:name="Listener" doc:id="fddfa348-54bc-4171-abb6-b66d6fb8db2f" config-ref="VM_Config" queueName="sample" timeout="30"/>
+        <logger level="INFO" doc:name="Logger" doc:id="b743ef13-b413-4456-82c2-d02f01819eb5" message="***Service consumed..Decryption In progress***"/>
+		<crypto:jce-decrypt doc:name="Jce decrypt" doc:id="95a95020-d540-4f97-b6aa-01a20e6afa9f" config-ref="Crypto_Jce" algorithm="AES" keyId="sample" />
+		<logger level="INFO" doc:name="Logger" doc:id="d2e77328-ce06-4189-bc64-531af3e5eb49" message="+++Payload Decrypted+++" />
+		<logger level="INFO" doc:name="Logger" doc:id="3f2d6a6d-fc9a-4720-8189-1a0d0ae58131" message="#[payload]"/>
+    
+</flow>
+</mule>
